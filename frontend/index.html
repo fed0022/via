@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Traffic Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Live Traffic Dashboard</h1>
+    <div id="top-sites"></div>
+  </header>
+  <main>
+    <canvas id="trafficChart"></canvas>
+  </main>
+  <aside>
+    <button id="settingsToggle">⚙️</button>
+    <div id="settingsPanel" hidden></div>
+  </aside>
+
+  <audio id="ping" src="ping.mp3" preload="auto"></audio>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const ping = document.getElementById('ping');
+    let currentData = {};
+
+    async function fetchData() {
+      const [statsRes, configRes] = await Promise.all([
+        fetch('/api/stats'),
+        fetch('/api/config')
+      ]);
+      const stats = await statsRes.json();
+      const config = await configRes.json();
+
+      const hours = Object.keys(stats).map(h => parseInt(h)).sort((a, b) => a - b);
+      const datasets = config.sites.map(site => {
+        return {
+          label: site.name,
+          data: hours.map(h => stats[h]?.[site.id] || 0),
+          backgroundColor: site.color
+        };
+      });
+
+      const totalToday = config.sites.map(site => ({
+        id: site.id,
+        name: site.name,
+        total: hours.reduce((sum, h) => sum + (stats[h]?.[site.id] || 0), 0)
+      })).sort((a, b) => b.total - a.total);
+
+      document.getElementById('top-sites').innerHTML = totalToday.slice(0, 8).map(site => `
+        <div class="site-label" style="background:${site.total > 0 ? config.sites.find(s => s.id === site.id).color : '#ccc'}">
+          ${site.name}: ${site.total}
+        </div>
+      `).join('');
+
+      if (window.trafficChart) {
+        trafficChart.data.labels = hours;
+        trafficChart.data.datasets = datasets;
+        trafficChart.update();
+      } else {
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        window.trafficChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: hours,
+            datasets: datasets
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } },
+            animation: {
+              onComplete: () => {
+                if (JSON.stringify(currentData) !== JSON.stringify(stats)) {
+                  ping.play();
+                  currentData = stats;
+                }
+              }
+            },
+            scales: {
+              x: { stacked: true },
+              y: { stacked: true, beginAtZero: true }
+            }
+          }
+        });
+      }
+    }
+
+    fetchData();
+    setInterval(fetchData, 30000);
+  </script>
+</body>
+</html>
