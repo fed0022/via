@@ -8,7 +8,6 @@ const { fetchLiveUsers } = require("./ga4");
 const config = require("./config.json");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server läuft auf Port ${PORT}`);
 });
@@ -62,6 +61,7 @@ app.get("/api/config", (req, res) => {
 // 💡 Wichtig: frontend von hier ausliefern (same-origin für CORS-freies Setup)
 app.use(express.static(path.join(__dirname, '../frontend')));
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Dashboard läuft auf Port ${PORT}`);
 });
