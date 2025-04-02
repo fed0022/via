@@ -1,26 +1,34 @@
-// 📦 backend/ga4.js
-
-const { BetaAnalyticsDataClient } = require('@google-analytics/data');
+const { google } = require('googleapis');
 const { credentialsPath } = require('./config');
-process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+const path = require('path');
 
-const client = new BetaAnalyticsDataClient();
+// Initialisiere Auth-Client
+const auth = new google.auth.GoogleAuth({
+  keyFile: credentialsPath,
+  scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+});
 
 async function fetchLiveUsers(propertyId) {
   try {
-    const [response] = await client.runRealtimeReport({
+    const client = await auth.getClient();
+    const analyticsdata = google.analyticsdata({ version: 'v1beta', auth: client });
+
+    const [response] = await analyticsdata.properties.runRealtimeReport({
       property: `properties/${propertyId}`,
-      dimensions: [{ name: 'unifiedScreenName' }],
-      metrics: [{ name: 'activeUsers' }]
+      requestBody: {
+        dimensions: [{ name: 'unifiedScreenName' }],
+        metrics: [{ name: 'activeUsers' }],
+      },
     });
 
-    const total = response.rows.reduce((sum, row) => {
+    const rows = response.rows || [];
+    const total = rows.reduce((sum, row) => {
       return sum + parseInt(row.metricValues[0].value || 0, 10);
     }, 0);
 
     return total;
   } catch (err) {
-    console.error(`Fehler beim Abrufen von GA4-Daten für ${propertyId}:`, err.message);
+    console.error(`❌ GA4-Fehler bei ${propertyId}:`, err.message);
     return 0;
   }
 }
