@@ -1,0 +1,17 @@
+{
+    "sites": [
+      {
+        "id": "Table Tales",
+        "name": "tabletales.hamburg",
+        "propertyId": "371813935",
+        "color": "#ff0000"
+      },
+      {
+        "id": "Kannenkunst",
+        "name": "kannenkunst.de",
+        "propertyId": "265789888",
+        "color": "#ff8800"
+      }
+    ]
+  }
+  
